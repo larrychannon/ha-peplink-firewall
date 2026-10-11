@@ -1,5 +1,5 @@
 {
-  "title": "Peplink Outbound Firewall",
+  "title": "Peplink Router Firewall Toggle",
   "config": {
     "step": {
       "user": {
