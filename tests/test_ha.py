@@ -223,3 +223,79 @@ async def test_ha_service_apply_failure_leaves_unknown_state(hass, router):
             assert state.attributes["pending_changes"] is True
             assert await hass.config_entries.async_unload(entry.entry_id)
             await hass.async_block_till_done()
+
+
+async def test_two_prefix_sets_and_transient_reads_keep_ha_available(hass, router):
+    from aiohttp import ClientSession, web
+
+    from custom_components.peplink_firewall.api import PeplinkClient
+
+    second_tag = "[HA-Z9Y8]"
+    router.config["outbound"]["rule"]["11"]["name"] = second_tag + " Guest"
+    router.config["outbound"]["rule"]["10"]["enable"] = True
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={**CONNECTION, "router_url": router.url},
+        options={
+            "groups": [
+                {"name": "Tablets", "tag": TAG},
+                {"name": "Guests", "tag": second_tag},
+            ]
+        },
+        unique_id=router.url,
+    )
+    entry.add_to_hass(hass)
+    async with ClientSession() as session:
+        api = PeplinkClient(
+            session, router.url, "ic2", "dummy", "dummy", token_url=router.url + "/oauth"
+        )
+        with (
+            patch("custom_components.peplink_firewall.make_client", return_value=api),
+            patch("custom_components.peplink_firewall.api.READ_RETRY_DELAYS", (0, 0, 0)),
+        ):
+            assert await hass.config_entries.async_setup(entry.entry_id)
+            await hass.async_block_till_done()
+            states = {
+                s.attributes["rule_prefix"]: s
+                for s in hass.states.async_all()
+                if s.domain == "switch"
+            }
+            assert len(states) == 2
+            assert states[TAG].state == states[second_tag].state == "on"
+            observed = []
+            unsubscribe = hass.bus.async_listen(
+                "state_changed",
+                lambda event: (
+                    observed.append(event.data["new_state"].state)
+                    if event.data.get("new_state") and event.data["entity_id"].startswith("switch.")
+                    else None
+                ),
+            )
+            try:
+                router.faults["/api/config.firewall"] = [web.Response(status=503)]
+                await entry.runtime_data.async_refresh()
+                await hass.async_block_till_done()
+                assert hass.states.get(states[TAG].entity_id).state == "on"
+                # The router has accepted Apply, but its next status read is temporarily down.
+                router.after_apply_faults = {
+                    "/cgi-bin/MANGA/chkactivate.cgi": [web.Response(status=502)]
+                }
+                await hass.services.async_call(
+                    "switch", "turn_off", {"entity_id": states[TAG].entity_id}, blocking=True
+                )
+                await hass.async_block_till_done()
+                assert hass.states.get(states[TAG].entity_id).state == "off"
+                assert hass.states.get(states[second_tag].entity_id).state == "on"
+                assert router.applies == 1 and len(router.saves) == 2
+                assert "unavailable" not in observed
+                router.faults["/api/config.firewall"] = [web.Response(status=503) for _ in range(4)]
+                await entry.runtime_data.async_refresh()
+                await hass.async_block_till_done()
+                assert hass.states.get(states[TAG].entity_id).state == "unavailable"
+                await entry.runtime_data.async_refresh()
+                await hass.async_block_till_done()
+                assert hass.states.get(states[TAG].entity_id).state == "off"
+            finally:
+                unsubscribe()
+                assert await hass.config_entries.async_unload(entry.entry_id)
+                await hass.async_block_till_done()
