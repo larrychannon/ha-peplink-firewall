@@ -19,6 +19,19 @@ credential files are not part of installation or setup in Home Assistant.
   communication → **Unavailable**. Attributes show the prefix, rule names, and
   enabled/total counts.
 
+## Temporary read failures
+
+Safe firewall/status reads retry connection failures, timeouts, HTTP 408/429/
+500/502/503/504 and incomplete JSON/XML responses. There are at most four attempts,
+with 1/2/4-second backoff and a 45-second deadline per read. Token acquisition
+failures of those kinds are also recoverable within the read retry budget.
+Permanent HTTP/API errors and authentication failures retain their own handling.
+Save and Apply are not replayed after an ambiguous transport failure.
+
+The HA coordinator keeps the previous state while a read is retrying. If retries
+are exhausted, normal Unavailable behavior resumes. Debug logs record sanitized
+failure categories and retry attempts without router URLs or tokens.
+
 ## How changes are made
 
 The integration reads the current outbound configuration before each change,

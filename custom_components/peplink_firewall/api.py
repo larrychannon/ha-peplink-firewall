@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 import time
 import xml.etree.ElementTree as ET
 from copy import deepcopy
@@ -9,14 +10,29 @@ from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urlsplit
 
-from aiohttp import ClientError, ClientSession, ClientTimeout
+from aiohttp import (
+    ClientConnectionError,
+    ClientError,
+    ClientPayloadError,
+    ClientSession,
+    ClientSSLError,
+    ClientTimeout,
+)
 
 from .const import IC2_TOKEN_URL, MODE_DIRECT, MODE_IC2, USER_AGENT
 from .rules import RuleError, matching_rules, rule_form
 
+LOGGER = logging.getLogger(__name__)
+READ_RETRY_DELAYS = (1, 2, 4)
+READ_RETRY_TIMEOUT = 45
+
 
 class PeplinkError(Exception):
     """A router operation failed; messages never contain credential-bearing URLs."""
+
+
+class TransientError(PeplinkError):
+    """A temporary transport or incomplete read failure that can be retried safely."""
 
 
 class AuthenticationError(PeplinkError):
@@ -91,10 +107,18 @@ class PeplinkClient:
             ) as response:
                 if response.status in {401, 403}:
                     raise AuthenticationError("Authentication was rejected.")
+                if response.status in {408, 429, 500, 502, 503, 504}:
+                    raise TransientError(
+                        f"Temporary router request failure (HTTP {response.status})."
+                    )
                 if response.status >= 300:
                     raise PeplinkError(f"Router request failed (HTTP {response.status}).")
                 return await response.text()
-        except ClientError, TimeoutError:
+        except ClientSSLError:
+            raise PeplinkError("TLS verification failed; check the router certificate.") from None
+        except ClientConnectionError, ClientPayloadError, TimeoutError:
+            raise TransientError("Temporary connection failure or response timeout.") from None
+        except ClientError:
             raise PeplinkError("Unable to communicate with the router or token service.") from None
 
     @staticmethod
@@ -177,7 +201,14 @@ class PeplinkClient:
                 raw = await self._http(method, self.router_url + path, params=params, **kwargs)
                 # Some firmware reports authentication errors in an HTTP 200 JSON response.
                 if raw.lstrip().startswith("{"):
-                    body = self._json(raw)
+                    try:
+                        body = self._json(raw)
+                    except PeplinkError:
+                        if method == "GET":
+                            raise TransientError(
+                                "Router returned an incomplete read response."
+                            ) from None
+                        raise
                     message = str(body.get("message", "")).lower()
                     if body.get("stat") == "fail" and any(
                         text in message
@@ -193,23 +224,63 @@ class PeplinkClient:
                         self._expires_at = 0
         raise AuthenticationError("Authentication was rejected.")
 
+    async def _read_with_retry(self, operation, description: str):
+        """Keep the current HA state while safe reads recover, with a fixed deadline."""
+        try:
+            async with asyncio.timeout(READ_RETRY_TIMEOUT):
+                for attempt in range(len(READ_RETRY_DELAYS) + 1):
+                    try:
+                        return await operation()
+                    except TransientError as exc:
+                        if attempt == len(READ_RETRY_DELAYS):
+                            raise
+                        delay = READ_RETRY_DELAYS[attempt]
+                        LOGGER.debug(
+                            "Temporary %s failure (%s); retry %s in %s seconds",
+                            description,
+                            str(exc),
+                            attempt + 1,
+                            delay,
+                        )
+                        await asyncio.sleep(delay)
+        except TimeoutError:
+            raise TransientError("Router read did not recover before the retry deadline.") from None
+
     async def _api(self, method: str, function: str, **kwargs) -> dict[str, Any]:
-        result = self._json(await self._request(method, "/api/" + function, **kwargs))
-        if result.get("stat") != "ok":
-            raise PeplinkError("Router API reported that the operation failed.")
-        return result
+        async def request():
+            raw = await self._request(method, "/api/" + function, **kwargs)
+            try:
+                result = self._json(raw)
+            except PeplinkError:
+                if method == "GET":
+                    raise TransientError(
+                        "Router returned an incomplete JSON read response."
+                    ) from None
+                raise
+            if result.get("stat") != "ok":
+                raise PeplinkError("Router API reported that the operation failed.")
+            return result
+
+        if method == "GET":
+            return await self._read_with_retry(request, "firewall read")
+        return await request()
 
     async def _activation(self) -> tuple[bool, bool]:
-        raw = await self._request("GET", "/cgi-bin/MANGA/chkactivate.cgi", params={"extended": "1"})
-        try:
-            root = ET.fromstring(raw)
-        except ET.ParseError:
-            raise PeplinkError("Router returned an invalid application status.") from None
-        status = root.findtext(".//status")
-        modified = root.findtext(".//modified")
-        if status is None or modified not in {"0", "1"}:
-            raise PeplinkError("Router did not report application status.")
-        return status == "Activated" and modified == "0", modified == "1"
+        async def request():
+            raw = await self._request(
+                "GET", "/cgi-bin/MANGA/chkactivate.cgi", params={"extended": "1"}
+            )
+            try:
+                root = ET.fromstring(raw)
+            except ET.ParseError:
+                raise TransientError("Router returned an incomplete application status.") from None
+            status = root.findtext(".//status")
+            modified = root.findtext(".//modified")
+            if status is None or modified not in {"0", "1"}:
+                raise TransientError("Router did not report application status.")
+            return status == "Activated" and modified == "0", modified == "1"
+
+        return await self._read_with_retry(request, "application status read")
 
     async def _read_snapshot(self) -> Snapshot:
         before = await self._activation()

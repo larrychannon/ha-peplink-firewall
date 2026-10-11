@@ -68,8 +68,12 @@ matching traffic. For an allow rule, On enables that rule’s permission.
 
 ## Manage your switches
 
-Open the integration’s **Options** to add or remove switches or change how often
-HA checks the router (every 30 seconds by default). Use **Reconfigure** to update
+One router can have multiple switches, each with its own rule prefix.
+To add another, open the integration’s **Options → Add a tagged switch**, name
+it, and copy its new prefix into the matching outbound rule names on the router.
+
+Options also lets you remove switches or change how often HA checks the router
+(every 30 seconds by default). Use **Reconfigure** to update
 the connection or credentials. Removing a switch leaves its router rules as they are.
 
 ## Before toggling

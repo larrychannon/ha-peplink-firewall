@@ -54,9 +54,14 @@ class Router:
         self.tamper = False
         self.save_rejected = False
         self.apply_rejected = False
+        self.faults = {}
+        self.after_apply_faults = {}
 
     async def handle(self, req):
         self.requests.append((req.method, req.path, dict(req.query)))
+        faults = self.faults.get(req.path, [])
+        if faults:
+            return faults.pop(0)
         if req.path == "/oauth":
             grant = dict(await req.post())
             self.grants.append(grant)
@@ -122,6 +127,7 @@ class Router:
             if self.apply_rejected:
                 return web.json_response({"stat": "fail"})
             self.pending = False
+            self.faults.update(self.after_apply_faults)
             return web.json_response({"stat": "ok"})
         return web.Response(status=404)
 
