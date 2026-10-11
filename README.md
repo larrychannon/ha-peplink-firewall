@@ -1,175 +1,84 @@
-# Peplink Router Firewall Toggle for Home Assistant
+# Peplink Router Firewall Toggle
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=larrychannon&repository=ha-peplink-firewall&category=integration)
 
-A custom integration for Home Assistant 2026.10. Each switch enables or disables
-existing **Outbound Firewall Rules** whose names start with its prefix, for example:
+Control your Peplink router’s **outbound firewall rules** with switches in Home
+Assistant. Connect directly to your router or through InControl 2.
+
+One switch can control one rule or a group of rules. Rules keep their order and
+settings; the switch changes whether they are enabled.
+
+## Install
+
+Requires **Home Assistant 2026.10 or later** and **HACS**.
+
+1. Click the **Open HACS Repository** button above and choose your Home Assistant instance.
+2. Download **Peplink Router Firewall Toggle** in HACS.
+3. Restart Home Assistant.
+
+If the button does not open the repository, go to **HACS → ⋮ → Custom repositories**,
+add `https://github.com/larrychannon/ha-peplink-firewall`, choose **Integration**,
+and download it from HACS.
+
+## Connect your router
+
+1. Go to **Settings → Devices & services → Add integration**.
+2. Search for **Peplink Router Firewall Toggle**.
+3. Choose your connection method and enter its router URL, client ID and client secret:
+
+   | Connection | Router URL | Credentials |
+   | --- | --- | --- |
+   | Direct router API | Your router’s local address, such as `https://192.168.50.1` | API client ID and secret created on the router |
+   | InControl 2 | Your router’s Remote Web Admin address from InControl 2 | InControl 2 client ID and secret |
+
+   The client must have permission to read and change router settings. Enter only
+   the base router address, without a page path or extra URL parameters.
+4. Give your first switch a name, such as **Block tablets**.
+5. Copy the **Rule prefix** shown during setup.
+
+Enter your credentials in this setup form. The integration handles sign-in and
+renewal automatically.
+
+## Choose which rules the switch controls
+
+In your Peplink router’s web admin, put the switch’s prefix at the beginning of
+one or more **Outbound Firewall Rule** names. For example, if HA generated
+`[HA-A7K2]`:
 
 ```text
-[HA-A7K2] iPad Pro
-[HA-A7K2] Another device
+[HA-A7K2] Tablet
+[HA-A7K2] Guest laptop
 ```
 
-The description after the prefix is ignored for matching. HA does not create,
-rename, delete, or reorder router rules. **On means the rules are enabled**: for a
-Deny rule, On means its traffic is blocked. Inbound, internal, and local-service
-rules are outside the integration's scope.
+Save and apply those rule-name changes on the router. Keep any description after
+the prefix; it does not affect matching. Use the same prefix for every rule you
+want that switch to control. You can also enter an existing prefix during setup.
 
-## Install on HA OS
+Add the switch to your HA dashboard or use it in automations.
 
-### HACS
+**On enables the rules; Off disables them.** For a deny rule, On blocks the
+matching traffic. For an allow rule, On enables that rule’s permission.
 
-This is a **custom integration**, installed through HACS rather than the HA OS
-add-on store. HACS must already be installed in your Home Assistant instance.
+| Switch state | Meaning |
+| --- | --- |
+| On | All matching rules are enabled. |
+| Off | All matching rules are disabled. |
+| Unknown | The matching rules have different states, or router changes are waiting to be applied. |
+| Unavailable | No matching rules were found, or HA cannot reach the router. |
 
-1. Click the **Open HACS Repository** button above and choose your HA instance.
-2. Add/download **Peplink Router Firewall Toggle** when prompted, then restart HA.
-3. Follow the setup instructions below, starting at step 3.
+## Manage your switches
 
-If the button cannot find the repository, open **HACS → ⋮ → Custom repositories**,
-add `https://github.com/larrychannon/ha-peplink-firewall` with type **Integration**,
-then find and download it in HACS. This repository is not in the default HACS
-catalogue. Without a published release, HACS installs its default branch.
+Open the integration’s **Options** to add or remove switches or change how often
+HA checks the router (every 30 seconds by default). Use **Reconfigure** to update
+the connection or credentials. Removing a switch leaves its router rules as they are.
 
-### Manual installation and setup
+## Before toggling
 
-1. Copy `custom_components/peplink_firewall` into your HA configuration directory,
-   resulting in `/config/custom_components/peplink_firewall/manifest.json`. The
-   release ZIP has the same folder structure and can be extracted into `/config`.
-2. Restart **Home Assistant**.
-3. Open **Settings → Devices & services → Add integration → Peplink Router Firewall Toggle**.
-4. Choose **Direct router API** or **InControl 2 Remote Web Admin** and enter the
-   base router URL and the client ID/secret for that connection method. Use a
-   client with permission to read and modify router configuration.
-5. Name your first switch. The integration generates a prefix; copy it into the
-   start of the router rule names. To reuse the development rule, enter
-   **`[HA-A7K2]`** instead of the generated prefix.
-6. Add the switch to a dashboard or use it in automations.
+Apply or discard any pending changes in the router’s web admin first. An HA toggle
+saves and applies its changes, so avoid editing router settings at the same time.
 
-The router's options UI lets you add/remove tagged switches and set the polling
-interval (default 30 seconds). Removing a switch leaves router rules unchanged.
-Use the integration's **Reconfigure** action to change connection settings or
-credentials. On reconfiguration, an omitted/blank secret keeps the stored secret.
+Only outbound rules are supported. Rules managed by InControl 2 and rules with
+unsupported advanced settings cannot be toggled by this integration.
 
-## Authentication and state
-
-- **Direct:** uses the router's API client ID/secret at `/api/auth.token.grant`
-  and sends `accessToken`. It obtains another token before expiry or after an
-  explicit authentication rejection.
-- **IC2:** uses your IC2 OAuth client ID/secret at the IC2 token service and sends
-  `access_token` to the Remote Web Admin URL. It refreshes before expiry and falls
-  back to a client-credentials grant if the refresh token is rejected.
-- Credentials are stored in standard HA config entries. Tokens stay in memory
-  and are obtained again after restart. Credentials and tokens are excluded from
-  entity attributes and error messages.
-- All matching rules enabled → **On**; all disabled → **Off**; mixed states or
-  configuration waiting to be applied → **Unknown**. No matches or failed
-  communication → **Unavailable**. Attributes show the prefix, rule names, and
-  enabled/total counts.
-
-## How changes are made
-
-The integration reads the current outbound configuration before each change,
-matches the exact prefix, and submits each changed rule using the router's
-`FIREWALL_modify` form. It preserves names and settings, verifies the saved rules
-and order, calls the documented `POST /api/cmd.config.apply`, and confirms active
-state before reporting success.
-
-If the router already has pending edits, the integration asks you to apply or
-discard them in Peplink first. Apply Changes is global to the router, so avoid
-editing its configuration concurrently with an HA toggle. Failed or unexpected
-saves are not applied or automatically discarded.
-
-The write adapter supports Any/TCP/UDP/ICMP/IP/DSCP protocols and ordinary
-Any/IP/network/MAC/domain/group/client address selectors and basic port ranges.
-It rejects unrecognized fields or unsupported advanced settings before writing;
-this prevents silently changing settings the adapter cannot preserve. IC2-managed
-rules are also rejected. The form interface is firmware-specific and was inspected
-on router firmware **8.6.1 build 6437**.
-
-## Verification
-
-Local tests use **HA Core 2026.10.1** with the HA custom-component test harness.
-They exercise HA config/options/reauth flows, switch states, and HTTP calls to a
-simulated router, including token renewal, preservation, pending edits, and Save/
-Apply failures. These are backend tests, not a deployment on the user's HA OS VM
-or a rendered HA frontend test.
-
-Live IC2 access, prefix/state reads, and a token-based Save with unchanged values
-have been verified against the development router. All readback settings and rule
-order were preserved. Peplink marked that Save as pending even though its values
-were unchanged; the user must apply/discard those pending edits before toggling
-through the integration. Apply was not called on the live router, at the user's request. Direct
-router access and actual enable/disable/application on the HA OS VM remain to be
-verified after installation.
-
-Run the tests:
-
-```sh
-uv sync
-uv run pytest -q
-uv run ruff check custom_components tests scripts generate_ic2_token.py
-```
-
-Create the installation ZIP:
-
-```sh
-uv run python -m scripts.package
-```
-
-Read a group with the integration's client (no settings are changed):
-
-```sh
-uv run python -m scripts.inspect_router --tag '[HA-A7K2]'
-```
-
-For direct access, populate `ROUTER_CLIENT_ID`, `ROUTER_CLIENT_SECRET`, and the
-local `ROUTER_URL`, then add `--mode direct`.
-
-## Generate an IC2 access token
-
-Requires Python 3 and no additional packages. Put your development credentials in
-`.env` beside the script:
-
-```dotenv
-IC2_CLIENT_ID=your_client_id
-IC2_CLIENT_SECRET=your_client_secret
-ROUTER_URL=https://your-router-remote-web-admin-host.peplink.com
-```
-
-Generate a token:
-
-```sh
-python3 generate_ic2_token.py
-```
-
-The script prints only the access token to standard output. Errors go to standard
-error and return a nonzero exit code. It does not save tokens. Environment
-variables override `.env` values; `IC2_CLIENT` is also accepted as the client ID.
-
-To see the full response, including `expires_in` and the refresh token:
-
-```sh
-python3 generate_ic2_token.py --json
-```
-
-To use another credentials file:
-
-```sh
-python3 generate_ic2_token.py --env-file /path/to/.env
-```
-
-## Try the router API
-
-```sh
-source .env
-IC2_ACCESS_TOKEN="$(python3 generate_ic2_token.py)" && \
-  curl -sS --get --data-urlencode "access_token=$IC2_ACCESS_TOKEN" \
-  "${ROUTER_URL%/}/api/info.firmware"
-```
-
-Verified against the development router: an IC2 token in the `access_token` URL
-parameter returns firmware information, with active firmware `8.6.1 build 6437`.
-Python's default urllib User-Agent received HTTP 403 with `error code: 1010`;
-curl and urllib using curl's User-Agent returned HTTP 200 with the same token.
-Firewall rule control has not yet been verified.
+**Compatibility:** router access has been checked on Peplink firmware 8.6.1.
+Live switching and other firmware versions still need verification.
