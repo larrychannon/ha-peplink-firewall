@@ -1,6 +1,6 @@
 {
   "domain": "peplink_firewall",
-  "name": "Peplink Outbound Firewall",
+  "name": "Peplink Router Firewall Toggle",
   "version": "0.1.0",
   "config_flow": true,
   "integration_type": "device",

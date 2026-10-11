@@ -1,4 +1,4 @@
-# Peplink Outbound Firewall for Home Assistant
+# Peplink Router Firewall Toggle for Home Assistant
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=larrychannon&repository=ha-peplink-firewall&category=integration)
 
@@ -23,7 +23,7 @@ This is a **custom integration**, installed through HACS rather than the HA OS
 add-on store. HACS must already be installed in your Home Assistant instance.
 
 1. Click the **Open HACS Repository** button above and choose your HA instance.
-2. Add/download **Peplink Outbound Firewall** when prompted, then restart HA.
+2. Add/download **Peplink Router Firewall Toggle** when prompted, then restart HA.
 3. Follow the setup instructions below, starting at step 3.
 
 If the button cannot find the repository, open **HACS → ⋮ → Custom repositories**,
@@ -37,7 +37,7 @@ catalogue. Without a published release, HACS installs its default branch.
    resulting in `/config/custom_components/peplink_firewall/manifest.json`. The
    release ZIP has the same folder structure and can be extracted into `/config`.
 2. Restart **Home Assistant**.
-3. Open **Settings → Devices & services → Add integration → Peplink Outbound Firewall**.
+3. Open **Settings → Devices & services → Add integration → Peplink Router Firewall Toggle**.
 4. Choose **Direct router API** or **InControl 2 Remote Web Admin** and enter the
    base router URL and the client ID/secret for that connection method. Use a
    client with permission to read and modify router configuration.

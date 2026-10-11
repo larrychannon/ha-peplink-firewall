@@ -1,5 +1,5 @@
 {
-  "name": "Peplink Outbound Firewall",
+  "name": "Peplink Router Firewall Toggle",
   "homeassistant": "2026.10.0",
   "render_readme": true
 }
