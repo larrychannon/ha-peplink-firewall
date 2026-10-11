@@ -1,0 +1,29 @@
+name: Validate integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: HA Core backend tests and lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          enable-cache: true
+      - name: Install locked development dependencies
+        run: uv sync --locked
+      - name: Lint
+        run: uv run --locked ruff check custom_components tests scripts generate_ic2_token.py
+      - name: Test with simulated router
+        run: uv run --locked pytest -q --tb=short tests
+      - name: Build installation archive
+        run: uv run --locked python -m scripts.package
