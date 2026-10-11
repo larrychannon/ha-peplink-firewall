@@ -1,5 +1,7 @@
 # Peplink Outbound Firewall for Home Assistant
 
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=larrychannon&repository=ha-peplink-firewall&category=integration)
+
 A custom integration for Home Assistant 2026.10. Each switch enables or disables
 existing **Outbound Firewall Rules** whose names start with its prefix, for example:
 
@@ -14,6 +16,22 @@ Deny rule, On means its traffic is blocked. Inbound, internal, and local-service
 rules are outside the integration's scope.
 
 ## Install on HA OS
+
+### HACS
+
+This is a **custom integration**, installed through HACS rather than the HA OS
+add-on store. HACS must already be installed in your Home Assistant instance.
+
+1. Click the **Open HACS Repository** button above and choose your HA instance.
+2. Add/download **Peplink Outbound Firewall** when prompted, then restart HA.
+3. Follow the setup instructions below, starting at step 3.
+
+If the button cannot find the repository, open **HACS → ⋮ → Custom repositories**,
+add `https://github.com/larrychannon/ha-peplink-firewall` with type **Integration**,
+then find and download it in HACS. This repository is not in the default HACS
+catalogue. Without a published release, HACS installs its default branch.
+
+### Manual installation and setup
 
 1. Copy `custom_components/peplink_firewall` into your HA configuration directory,
    resulting in `/config/custom_components/peplink_firewall/manifest.json`. The
