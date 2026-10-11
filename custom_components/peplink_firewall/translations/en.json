@@ -1,0 +1,105 @@
+{
+  "title": "Peplink Outbound Firewall",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Peplink",
+        "description": "Choose direct access with router API credentials, or InControl 2 access with IC2 client credentials and the Remote Web Admin base URL. For reconfiguration, leave the secret blank to keep the stored value.",
+        "data": {
+          "connection_mode": "Connection method",
+          "router_url": "Router URL",
+          "client_id": "Client ID",
+          "client_secret": "Client secret",
+          "verify_ssl": "Verify TLS certificate"
+        }
+      },
+      "reconfigure": {
+        "title": "Connect to Peplink",
+        "description": "Choose direct access with router API credentials, or InControl 2 access with IC2 client credentials and the Remote Web Admin base URL. For reconfiguration, leave the secret blank to keep the stored value.",
+        "data": {
+          "connection_mode": "Connection method",
+          "router_url": "Router URL",
+          "client_id": "Client ID",
+          "client_secret": "Client secret",
+          "verify_ssl": "Verify TLS certificate"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Connect to Peplink",
+        "description": "Choose direct access with router API credentials, or InControl 2 access with IC2 client credentials and the Remote Web Admin base URL. For reconfiguration, leave the secret blank to keep the stored value.",
+        "data": {
+          "connection_mode": "Connection method",
+          "router_url": "Router URL",
+          "client_id": "Client ID",
+          "client_secret": "Client secret",
+          "verify_ssl": "Verify TLS certificate"
+        }
+      },
+      "group": {
+        "title": "Create your first tagged switch",
+        "description": "A prefix has been generated for this switch. Copy it to the start of one or more existing Outbound Firewall Rule names. Text after the prefix remains your description. You may enter an existing prefix such as [HA-A7K2]. On enables the rules; Off disables them.",
+        "data": {
+          "group_name": "Switch name",
+          "tag": "Rule prefix"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Authentication failed. Check the client credentials and selected connection method.",
+      "cannot_connect": "Could not read the router firewall and application status. Check the URL, connectivity, API permissions, and certificate.",
+      "invalid_url": "Enter a router base URL such as https://192.168.50.1, without a path or query.",
+      "invalid_tag": "Use a prefix in the form [HA-A7K2]: four uppercase letters or digits.",
+      "duplicate_tag": "This prefix already has a switch on this router.",
+      "empty_name": "Enter a name for the switch."
+    },
+    "abort": {
+      "already_configured": "This router is already configured. Add switches through its options.",
+      "reauth_successful": "Credentials updated successfully.",
+      "reconfigure_successful": "Connection settings updated successfully."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Manage outbound firewall switches",
+        "menu_options": {
+          "add_group": "Add a tagged switch",
+          "remove_group": "Remove a tagged switch",
+          "polling": "Set refresh interval"
+        }
+      },
+      "add_group": {
+        "title": "Add a tagged switch",
+        "description": "A prefix has been generated for this switch. Copy it to the start of one or more existing Outbound Firewall Rule names. Text after the prefix remains your description. You may enter an existing prefix such as [HA-A7K2]. On enables the rules; Off disables them.",
+        "data": {
+          "group_name": "Switch name",
+          "tag": "Rule prefix"
+        }
+      },
+      "remove_group": {
+        "title": "Remove a tagged switch",
+        "description": "Removing a switch leaves the router rules and their current enabled states unchanged.",
+        "data": {
+          "tag": "Switch to remove"
+        }
+      },
+      "polling": {
+        "title": "Refresh interval",
+        "data": {
+          "poll_interval": "Refresh interval (seconds)"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Authentication failed. Check the client credentials and selected connection method.",
+      "cannot_connect": "Could not read the router firewall and application status. Check the URL, connectivity, API permissions, and certificate.",
+      "invalid_url": "Enter a router base URL such as https://192.168.50.1, without a path or query.",
+      "invalid_tag": "Use a prefix in the form [HA-A7K2]: four uppercase letters or digits.",
+      "duplicate_tag": "This prefix already has a switch on this router.",
+      "empty_name": "Enter a name for the switch."
+    },
+    "abort": {
+      "no_groups": "There are no tagged switches to remove."
+    }
+  }
+}

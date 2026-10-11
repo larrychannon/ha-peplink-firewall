@@ -1,0 +1,11 @@
+{
+  "domain": "peplink_firewall",
+  "name": "Peplink Outbound Firewall",
+  "version": "0.1.0",
+  "config_flow": true,
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "documentation": "https://www.peplink.com/support/downloads/supplementary-materials/",
+  "codeowners": [],
+  "requirements": []
+}

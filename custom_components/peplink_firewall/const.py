@@ -1,0 +1,16 @@
+"""Constants for Peplink outbound firewall switches."""
+
+DOMAIN = "peplink_firewall"
+CONF_MODE = "connection_mode"
+CONF_ROUTER_URL = "router_url"
+CONF_CLIENT_ID = "client_id"
+CONF_CLIENT_SECRET = "client_secret"
+CONF_GROUPS = "groups"
+CONF_TAG = "tag"
+CONF_GROUP_NAME = "group_name"
+CONF_INTERVAL = "poll_interval"
+MODE_DIRECT = "direct"
+MODE_IC2 = "ic2"
+DEFAULT_INTERVAL = 30
+IC2_TOKEN_URL = "https://api.ic.peplink.com/api/oauth2/token"
+USER_AGENT = "curl/8.7.1"
